@@ -132,8 +132,8 @@ def main(argv):
 	
 	# retrieving arguments
 	server_addr = ''
-	word_fetch = ''
 	file_fetch = ''
+	words_fetch = []
 	try:
 		opts, args = getopt(argv, 's:w:f:', ['server=', 'word-fetch=', 'file-fetch='])
 	except GetoptError:
@@ -142,73 +142,77 @@ def main(argv):
 		if opt in ('-s', '--server'):
 			server_addr = arg
 		elif opt in ('-w', '--word-fetch'):
-			word_fetch = arg
+			words_fetch.append(arg)
 		elif opt in ('-f', '--file-fetch'):
 			file_fetch = arg
 	if not server_addr:
 		error('Error: Server address not specified')
-	if not word_fetch:
-		error('Error: Word to fetch not specified')
+	if len(words_fetch) == 0:
+		error('Error: Words to fetch not specified')
 	if not file_fetch:
 		error('Error: File to fetch not specified')
 	elif not os.path.isfile(file_fetch):
 		error('Error: File to fetch doesn\'t exist')
 	
-	# creating a list containing all the lines in which the keyword is found
-	with open(file_fetch, 'r') as match_file:
-		matchlist = [line for line in match_file if word_fetch in line]
-	
-	# if there are no matches, stop the script
-	if len(matchlist) == 0:
-		print('There are no matches for "' + word_fetch + '" in "' + file_fetch + '"')
-		sys.exit(2)
-	
-	# if server URL/IP does not start with http, append 'http://' to avoid Python requests library error
-	if server_addr[:4] != 'http':
-		server_addr = 'http://' + server_addr
-	
-	# saving current directory pathname
-	orig_dir = os.getcwd()
-	
-	# initializing counters
-	request_counter = 0
-	not_parsed_counter = 0
-	already_exists_counter = 0
-	
-	for word in matchlist:
+	# looping for every word to fetch
+	for word_fetch in words_fetch:
+		print('Fetching "' + word_fetch + '" in "' + file_fetch + '"')
 		
-		# parsing string from matchlist lines
-		parsed = parse_string(word)
-		if not parsed:
-			not_parsed_counter += 1
+		# creating a list containing all the lines in which the keyword is found
+		with open(file_fetch, 'r') as match_file:
+			matchlist = [line for line in match_file if word_fetch in line]
+		
+		# if there are no matches, skip to next word
+		if len(matchlist) == 0:
+			print('There are no matches for "' + word_fetch + '" in "' + file_fetch + '"')
 			continue
-		# appending the parsed string to the url
-		url_request = server_addr + parsed
-		# getting the filename and the pathname by splitting the string
-		arr = parsed.split('/')
-		# the last part will be the filename
-		filename = arr[len(arr) - 1]
-		# all the previous parts are directories
-		for i in range(1, len(arr) - 1):
-			# if the directory does not exist: create it, then change working directory into it
-			if not os.path.isdir(arr[i]):
-				os.mkdir(arr[i])
-			os.chdir(arr[i])
-		# if file already exists do not send request
-		if os.path.isfile(filename):
-			print('File "' + parsed + '" already exists, request not sent')
-			already_exists_counter += 1
-			# go back to main directory
-			os.chdir(orig_dir)
-		else:
-			# sending request and retrieving status code
-			r = download_file(url_request, parsed, filename)
-			os.chdir(orig_dir)
-			# if status code not OK
-			if r != 200:
-				# log error to bad_requests.txt file
-				error_request(file_fetch, url_request, parsed, filename, r)
-			request_counter += 1
+		
+		# if server URL/IP does not start with http, append 'http://' to avoid Python requests library error
+		if server_addr[:4] != 'http':
+			server_addr = 'http://' + server_addr
+		
+		# saving current directory pathname
+		orig_dir = os.getcwd()
+		
+		# initializing counters
+		request_counter = 0
+		not_parsed_counter = 0
+		already_exists_counter = 0
+		
+		for word in matchlist:
+			
+			# parsing string from matchlist lines
+			parsed = parse_string(word)
+			if not parsed:
+				not_parsed_counter += 1
+				continue
+			# appending the parsed string to the url
+			url_request = server_addr + parsed
+			# getting the filename and the pathname by splitting the string
+			arr = parsed.split('/')
+			# the last part will be the filename
+			filename = arr[len(arr) - 1]
+			# all the previous parts are directories
+			for i in range(1, len(arr) - 1):
+				# if the directory does not exist: create it, then change working directory into it
+				if not os.path.isdir(arr[i]):
+					os.mkdir(arr[i])
+				os.chdir(arr[i])
+			# if file already exists do not send request
+			if os.path.isfile(filename):
+				print('File "' + parsed + '" already exists, request not sent')
+				already_exists_counter += 1
+				# go back to main directory
+				os.chdir(orig_dir)
+			else:
+				# sending request and retrieving status code
+				r = download_file(url_request, parsed, filename)
+				os.chdir(orig_dir)
+				# if status code not OK
+				if r != 200:
+					# log error to bad_requests.txt file
+					error_request(file_fetch, url_request, parsed, filename, r)
+				request_counter += 1
 	
 	print('\nDone.')
 	print(str(request_counter) + ' HTTP request sent')
