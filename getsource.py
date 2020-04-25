@@ -82,11 +82,10 @@ def parse_string(string):
 	with open('not_parsed.txt', 'a') as not_parsed:
 		
 		# removing spaces
-		string = ''.join(string.split())
+		string = string.replace(' ', '')
 		
 		# checking if ' or " are in the string, not parsing otherwise
-		if "'" in string: string = string.split("'")[1]
-		elif '"' in string: string = string.split('"')[1]
+		if "'" in string or '"' in string: string = string.split("'")[1]
 		else:
 			not_parsed.write(string + '\n')
 			print('[*] Added to not_parsed: "{}"'.format(string))
@@ -94,9 +93,6 @@ def parse_string(string):
 		
 		# removing '.' if first char
 		if string[0] == '.': string = string[1:]
-		
-		# adding '/' if not first char
-		if string[0] != '/': string = '/' + string
 		
 		# not parsing if the entire string is just '/php'
 		if string == '/php':
